@@ -8,8 +8,20 @@ fi
 IMAGE_ARCH=$1
 DISTRO=$2
 
-echo "Open.HD Image Builder"
-echo "------------------------------------------------------"
+# print a simple line across the entire width of the terminal like '------------'
+line (){
+  printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+}
+
+echo ""
+n=" ██████╗ ██████╗ ███████╗███╗   ██╗   ██╗  ██╗██████╗     ██╗███╗   ███╗ █████╗  ██████╗ ███████╗    ██████╗ ██╗   ██╗██╗██╗     ██████╗ ███████╗██████╗ " && echo "${n::${COLUMNS:-$(tput cols)}}" # some magic to cut the end on smaller terminals
+n="██╔═══██╗██╔══██╗██╔════╝████╗  ██║   ██║  ██║██╔══██╗    ██║████╗ ████║██╔══██╗██╔════╝ ██╔════╝    ██╔══██╗██║   ██║██║██║     ██╔══██╗██╔════╝██╔══██╗" && echo "${n::${COLUMNS:-$(tput cols)}}"
+n="██║   ██║██████╔╝█████╗  ██╔██╗ ██║   ███████║██║  ██║    ██║██╔████╔██║███████║██║  ███╗█████╗      ██████╔╝██║   ██║██║██║     ██║  ██║█████╗  ██████╔╝" && echo "${n::${COLUMNS:-$(tput cols)}}"
+n="██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║   ██╔══██║██║  ██║    ██║██║╚██╔╝██║██╔══██║██║   ██║██╔══╝      ██╔══██╗██║   ██║██║██║     ██║  ██║██╔══╝  ██╔══██╗" && echo "${n::${COLUMNS:-$(tput cols)}}"
+n="╚██████╔╝██║     ███████╗██║ ╚████║██╗██║  ██║██████╔╝    ██║██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗    ██████╔╝╚██████╔╝██║███████╗██████╔╝███████╗██║  ██║" && echo "${n::${COLUMNS:-$(tput cols)}}"
+n=" ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═════╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝    ╚═════╝  ╚═════╝ ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝" && echo "${n::${COLUMNS:-$(tput cols)}}"
+echo ""
+line
 echo ""
 
 
@@ -26,7 +38,7 @@ if [[ "${IMAGE_ARCH}" == "" || ${DISTRO} == "" ]]; then
     echo "                   pi buster: testing image, for Pi Compute Module 3+ and Pi 4"
     echo ""
     echo ""
-    echo "------------------------------------------------------"
+    line
     echo ""
 fi
 
@@ -36,7 +48,6 @@ if [[ "$IMAGE_ARCH" == "pi" && "${DISTRO}" == "stretch" ]]; then
 
     BASE_IMAGE_URL=${PI_STRETCH_BASE_IMAGE_URL}
     BASE_IMAGE=${PI_STRETCH_BASE_IMAGE}
-    KERNEL_BRANCH=${PI_STRETCH_KERNEL_BRANCH}
 fi
 
 
@@ -45,11 +56,10 @@ if [[ "$IMAGE_ARCH" == "pi" && "${DISTRO}" == "buster" ]]; then
 
     BASE_IMAGE_URL=${PI_BUSTER_BASE_IMAGE_URL}
     BASE_IMAGE=${PI_BUSTER_BASE_IMAGE}
-    KERNEL_BRANCH=${PI_BUSTER_KERNEL_BRANCH}
 fi
 
 echo ""
-echo "------------------------------------------------------"
+line
 
 
 run_stage(){
@@ -83,23 +93,15 @@ run_stage(){
         for i in {00..99}; do
 
             if [ -x ${i}-run.sh ]; then
-                SKIP_STEP="${STAGE_WORK_DIR}/SKIP_STEP${i}"
-                if [ ! -f "${SKIP_STEP}" ]; then
-                    log "Begin ${STAGE_DIR}/${i}-run.sh"
-                    ./${i}-run.sh
-                    log "End ${STAGE_DIR}/${i}-run.sh"
-                    touch "${SKIP_STEP}"
-                fi
+                log "Begin ${STAGE_DIR}/${i}-run.sh"
+                ./${i}-run.sh
+                log "End ${STAGE_DIR}/${i}-run.sh"
             fi
 
             if [ -f ${i}-run-chroot.sh ]; then
-                SKIP_CH_STEP="${STAGE_WORK_DIR}/SKIP_CH_STEP${i}"
-                if [ ! -f "${SKIP_CH_STEP}" ]; then
-                    log "Begin ${STAGE_DIR}/${i}-run-chroot.sh"
-                    on_chroot < ${i}-run-chroot.sh
-                    log "End ${STAGE_DIR}/${i}-run-chroot.sh"
-                    touch "${SKIP_CH_STEP}"
-                fi
+                log "Begin ${STAGE_DIR}/${i}-run-chroot.sh"
+                on_chroot < ${i}-run-chroot.sh
+                log "End ${STAGE_DIR}/${i}-run-chroot.sh"
             fi
 
         done
@@ -143,18 +145,6 @@ export LOG_FILE="${WORK_DIR}/build.log"
 
 mkdir -p "${WORK_DIR}"
 
-
-# we use a branch-specific repo directory so that we don't have to blow it away just to build an
-# image for a different distro or board, we can just reset the stage
-export LINUX_DIR="linux-${KERNEL_BRANCH}"
-
-
-# used in the stage 5 scripts to place a version file inside the image, and below after the
-# stages have run, in the name of the image itself
-BUILDER_VERSION=$(git describe --always --tags)
-export BUILDER_VERSION
-
-
 export BASE_DIR
 
 export IMAGE_ARCH
@@ -166,56 +156,9 @@ export CLEAN
 export IMG_NAME
 export BASE_IMAGE_URL
 export BASE_IMAGE
-export J_CORES
-export GIT_KERNEL_SHA1
-export APT_PROXY
-export OPENHD_REPO
-export OPENHD_BRANCH
-export QOPENHD_REPO
-export QOPENHD_VERSION
-
-export PI_TOOLS_REPO
-export PI_TOOLS_BRANCH
-
-export KERNEL_REPO
-export KERNEL_BRANCH
-
-export RTL_8812AU_REPO
-export RTL_8812AU_BRANCH
-
-export V4L2LOOPBACK_REPO
-export V4L2LOOPBACK_BRANCH
-
-export VEYE_REPO
-export VEYE_BRANCH
-
-export RASPI2PNG_REPO
-export RASPI2PNG_BRANCH
-
-export MAVLINK_REPO
-export MAVLINK_BRANCH
-
-export MAVLINK_ROUTER_REPO
-export MAVLINK_ROUTER_BRANCH
 
 export APT_CACHER_NG_URL
 export APT_CACHER_NG_ENABLED
-
-export OPENHD_FLIRONE_DRIVER_REPO
-export OPENHD_FLIRONE_DRIVER_BRANCH
-
-export LIFEPOWEREDPI_REPO
-export LIFEPOWEREDPI_BRANCH
-
-export OPENHDROUTER_BRANCH
-export OPENHDROUTER_REPO
-
-export OPENHDMICROSERVICE_BRANCH
-export OPENHDMICROSERVICE_REPO
-
-export QT_VERSION
-export QT_MINOR_RELEASE
-
 
 export STAGE
 export STAGE_DIR
@@ -227,11 +170,10 @@ export ROOTFS_DIR
 export PREV_ROOTFS_DIR
 export IMG_SUFFIX
 
-# shellcheck source=scripts/common
-source "${SCRIPT_DIR}/common"
+# shellcheck source=scripts/common.sh
+source "${SCRIPT_DIR}/common.sh"
 
 log "IMG ${BASE_IMAGE}"
-log "SHA ${GIT_KERNEL_SHA1}"
 log "Begin ${BASE_DIR}"
 
 # Iterate trough the steps
@@ -249,11 +191,6 @@ if [ -f "${PREV_WORK_DIR}/IMAGE.img" ]; then
     cp "${PREV_WORK_DIR}/IMAGE.img" "${DEPLOY_DIR}/${IMG_NAME}-${OPENHD_VERSION}-${DISTRO}.img"
 fi
 
-#  Clean up SKIP_STEP files since we finished the build
-#  and it should be clean for the next run. Maybe make
-#  this an option?
 cd ${BASE_DIR}
-find stages -name "SKIP_STEP*" -exec rm {} \;
-#find stages -name "SKIP*" -exec rm {} \;
 
 log "End ${BASE_DIR}"
